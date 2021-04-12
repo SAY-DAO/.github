@@ -1,5 +1,5 @@
 {
     "name": "Build and Push workflow for SAY-DAO",
     "description": "This a shared build-and-push workflow.",
-    "iconName": "example"
+    "iconName": "say-logo"
 }
