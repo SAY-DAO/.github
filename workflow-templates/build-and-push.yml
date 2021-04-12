@@ -5,10 +5,10 @@ env:
   DEVELOPMENT: dev
   STAGING: stag
   PRODUCTION: prod
-  MAIN_BRANCH: $default-branch
-  DEV_DOMAIN: https://d.sayapp.company
-  STAGE_DOMAIN: https://s.sayapp.company
-  PROD_DOMAIN: https://sayapp.company
+  MAIN_BRANCH: master
+  DEV_DOMAIN: d.sayapp.company
+  STAGE_DOMAIN: s.sayapp.company
+  PROD_DOMAIN: sayapp.company
   TARGET_LAYER: prod
   DEV_STACK_NAME: say-dev-backend
   STAGE_STACK_NAME: say-stag-backend
@@ -17,7 +17,7 @@ env:
 on:
   push:
     branches:
-      - $default-branch
+      - 'master'
       - 'develop'
       - 'release*'
 
@@ -43,17 +43,14 @@ jobs:
         run: |
           echo "ENVIRONMENT=${{ env.DEVELOPMENT }}" >> $GITHUB_ENV
           echo ${{ steps.image_id.outputs.image_id }}
-
       - name: Set Staging Envars
-        if: ${{ env.REF == $default-branch }}
+        if: ${{ env.REF == 'master' }}
         run: |
           echo "ENVIRONMENT=stag" >> $GITHUB_ENV
-
       - name: Set Production Envars
         if: ${{ env.REF == 'release' }}
         run: |
           echo "ENVIRONMENT=prod" >> $GITHUB_ENV
-
       - name: Login to GitHub Container Registry
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u ${{ github.repository_owner }} --password-stdin ${{ env.REGISTRY }}
       
@@ -67,7 +64,6 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
-
       - name: Build Image
         uses: docker/build-push-action@v2
         with:
@@ -105,7 +101,6 @@ jobs:
       - name: Set Envars
         run: |
           echo "STACK_FILE=docker-stack-${{ env.DEV_STACK_NAME }}-${{ github.sha }}.yml" >> $GITHUB_ENV  
-
       - name: Prepare Stack File
         run: ENVIRONMENT=${{ env.DEVELOPMENT }} DOMAIN=${{ env.DEV_DOMAIN }} CONTAINER_IMAGE=${IMAGE_ID} STACK_NAME=${{ env.DEV_STACK_NAME }} docker-compose -f docker-compose.yml $OVERRIDE_IF_PROD config > ${{ env.STACK_FILE }}
 
@@ -131,7 +126,7 @@ jobs:
   deploy_staging:
     name: Deploy to Staging Server
     runs-on: ubuntu-latest
-    if: github.event.ref == 'refs/heads/$default-branch'
+    if: github.event.ref == 'refs/heads/master'
     needs: build_and_push
     env:
       IMAGE_ID: ${{ needs.build_and_push.outputs.image_id }}
@@ -147,7 +142,6 @@ jobs:
       - name: Set Envars
         run: |
           echo "STACK_FILE=docker-stack-${{ env.STAGE_STACK_NAME }}-${{ github.sha }}.yml" >> $GITHUB_ENV  
-
       - name: Prepare Stack File
         run: ENVIRONMENT=${{ env.STAGING }} DOMAIN=${{ env.STAGE_DOMAIN }} CONTAINER_IMAGE=${IMAGE_ID} STACK_NAME=${{ env.STAGE_STACK_NAME }} docker-compose -f docker-compose.yml $OVERRIDE_IF_PROD config > ${{ env.STACK_FILE }}
 
@@ -189,7 +183,6 @@ jobs:
       - name: Set Envars
         run: |
           echo "STACK_FILE=docker-stack-${{ env.PROD_STACK_NAME }}-${{ github.sha }}.yml" >> $GITHUB_ENV  
-
       - name: Prepare Stack File
         run: ENVIRONMENT=${{ env.PRODUCTION }} DOMAIN=${{ env.PROD_DOMAIN }} CONTAINER_IMAGE=${IMAGE_ID} STACK_NAME=${{ env.PROD_STACK_NAME }} docker-compose -f docker-compose.yml $OVERRIDE_IF_PROD config > ${{ env.STACK_FILE }}
 
